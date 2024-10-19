@@ -1,7 +1,10 @@
 ﻿using EvacuationAPI.Models;
 using EvacuationAPI.Services.Helpers;
+using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Logging; // Importing ILogger
+using StackExchange.Redis;
 using System.Numerics;
+using System.Security.Policy;
 using System.Text.Json;
 
 namespace EvacuationAPI.Services
@@ -11,6 +14,49 @@ namespace EvacuationAPI.Services
         private readonly RedisDb _redisDb = redisDb;
         private readonly ILogger<EvacuationService> _logger = logger; // ILogger for logging
 
+        public bool CheckRedisConnection()
+        {
+            try
+            {
+                // Get the database to trigger a connection check
+                var db = _redisDb.Multiplexer.GetDatabase();
+
+                // Ping the Redis server
+                var result = db.Ping();
+
+                // Optionally, log the result of the ping
+                _logger.LogInformation("Redis connection is {Status}.", result.TotalMilliseconds > 0 ? "available" : "not available");
+
+                return result.TotalMilliseconds > 0; // Return true if connection is successful
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error checking Redis connection: {Message}", ex.Message);
+                return false; // Return false if there is an error
+            }
+        }
+
+        public async Task<List<string>> GetKeysAsync()
+        {
+            try
+            {
+                var server = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.GetEndPoints()[0]);
+                var keys = new List<string>();
+
+                await foreach (var key in server.KeysAsync())
+                {
+                    keys.Add(key.ToString());
+                }
+
+                return keys;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error retrieving Redis info: {Message}", ex.Message);
+                throw; // Rethrow exception to handle in the controller
+            }
+        }
+
         #region CRUD operations for EvacuationZone
 
         public async Task<List<EvacuationZone>> GetAllEvacuationZonesAsync()
@@ -19,8 +65,12 @@ namespace EvacuationAPI.Services
 
             try
             {
-                // Get the server and fetch all keys matching the pattern
-                var keys = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.Configuration).Keys(pattern: "evacuation-zone:*");
+                // Get the first endpoint (this should be a valid endpoint)
+                var endPoint = _redisDb.Multiplexer.GetEndPoints()[0];
+                var server = _redisDb.Multiplexer.GetServer(endPoint);
+
+                // Fetch keys matching the pattern
+                var keys = server.Keys(pattern: "evacuation-zone:*");
 
                 // Process each key to retrieve the corresponding evacuation zone data
                 foreach (var key in keys)
@@ -33,6 +83,7 @@ namespace EvacuationAPI.Services
                         if (zone != null)
                         {
                             zoneList.Add(zone);
+                            _logger.LogInformation("Successfully retrieved evacuation zone: {Id}", zone.ZoneID);
                         }
                     }
                 }
@@ -41,7 +92,6 @@ namespace EvacuationAPI.Services
             {
                 // Log the error
                 _logger.LogError("Error retrieving evacuation zones: {Message}", ex.Message);
-                // Optionally, handle or rethrow the exception
             }
 
             return zoneList;
@@ -126,20 +176,37 @@ namespace EvacuationAPI.Services
 
         public async Task<List<Vehicle>> GetAllVehiclesAsync()
         {
-            var keys = _redisDb.Multiplexer.GetServer(_redisDb.Multiplexer.Configuration).Keys(pattern: "vehicle:*");
             var vehicleList = new List<Vehicle>();
 
-            foreach (var key in keys)
+            try
             {
-                var vehicleData = await _redisDb.Multiplexer.GetDatabase().StringGetAsync(key);
-                if (!vehicleData.IsNullOrEmpty)
+                // Get the first endpoint (this should be a valid endpoint)
+                var endPoint = _redisDb.Multiplexer.GetEndPoints()[0];
+                var server = _redisDb.Multiplexer.GetServer(endPoint);
+
+                // Fetch keys matching the pattern
+                var keys = server.Keys(pattern: "vehicle:*");
+
+                // Process each key to retrieve the corresponding vehicle data
+                foreach (var key in keys)
                 {
-                    var vehicle = JsonSerializer.Deserialize<Vehicle>(vehicleData.ToString()!);
-                    if (vehicle != null)
+                    var vehicleData = await _redisDb.Multiplexer.GetDatabase().StringGetAsync(key);
+                    if (!vehicleData.IsNullOrEmpty)
                     {
-                        vehicleList.Add(vehicle);
+                        // Deserialize the JSON data into an Vehicle object
+                        var vehicle = JsonSerializer.Deserialize<Vehicle>(vehicleData.ToString()!);
+                        if (vehicle != null)
+                        {
+                            vehicleList.Add(vehicle);
+                            _logger.LogInformation("Successfully retrieved vehicle: {Id}", vehicle.VehicleID);
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                _logger.LogError("Error retrieving vehicles: {Message}", ex.Message);
             }
 
             return vehicleList;
@@ -509,7 +576,11 @@ namespace EvacuationAPI.Services
             // Calculate how many evacuees can be transported in this round based on vehicle capacity
             int evacueesToTransport = Math.Min(evacuees, vehicle.Capacity);
             filteredStatuses.RemainingPeople -= evacueesToTransport; // Decrement the number of evacuees remaining
-                                                                     // Ensure RemainingPeople does not go below zero
+            // Ensure RemainingPeople does not go below zero
+            if (filteredStatuses.RemainingPeople < 0)
+            {
+                evacueesToTransport += filteredStatuses.RemainingPeople;
+            }            
             filteredStatuses.RemainingPeople = Math.Max(0, filteredStatuses.RemainingPeople); // Avoid negative numbers
 
             // Create the evacuation status

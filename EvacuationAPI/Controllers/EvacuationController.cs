@@ -1,5 +1,6 @@
 ﻿using EvacuationAPI.Models;
 using EvacuationAPI.Services;
+using EvacuationAPI.Services.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
@@ -14,6 +15,36 @@ namespace EvacuationAPI.Controllers
         private readonly EvacuationService _evacuationService = evacuationService;
         private readonly ILogger<EvacuationService> _logger = logger;
 
+        //[HttpGet("redis-health")]
+        //public async Task<IActionResult> CheckRedisConnection()
+        //{
+        //    try
+        //    {
+        //        bool value = _evacuationService.CheckRedisConnection();
+        //        return Ok(value? "Redis is connected" : "Redis connection failed");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError("Error updating evacuation zones: {Message}", ex.Message);
+        //        return StatusCode(500, $"Error connecting to Redis: {ex.Message}");
+        //    }
+        //}
+
+        //[HttpGet("redis-keys")]
+        //public async Task<IActionResult> GetRedisInfo()
+        //{
+        //    try
+        //    {
+        //        var keys = await _evacuationService.GetKeysAsync();
+        //        return Ok(keys);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError("Error retrieving keys from Redis: {Message}", ex.Message);
+        //        return StatusCode(500, "Internal server error");
+        //    }
+        //}
+
         #region Evacuation Zone
 
         /// <summary>
@@ -22,7 +53,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="zones"></param>
         /// <returns></returns>
         [HttpPost("evacuation-zones")]
-        [ApiExplorerSettings(GroupName = "Evacuation Zone")]
         public async Task<IActionResult> AddOrUpdateEvacuationZones([FromBody] List<EvacuationZone> zones)
         {
             try
@@ -42,7 +72,6 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("evacuation-zones")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<ActionResult<IEnumerable<EvacuationZone>>> GetAllEvacuationZonesAsync()
         {
             try
@@ -63,7 +92,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("evacuation-zones/{id}")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<ActionResult<EvacuationZone>> GetEvacuationZoneByIdAsync(string id)
         {
             try
@@ -89,7 +117,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="zoneIDs"></param>
         /// <returns></returns>
         [HttpDelete("evacuation-zones")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<IActionResult> DeleteEvacuationZones([FromBody] string[] zoneIDs)
         {
             try
@@ -114,7 +141,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="vehicles"></param>
         /// <returns></returns>
         [HttpPost("vehicles")]
-        [ApiExplorerSettings(GroupName = "Vehicle")]
         public async Task<IActionResult> AddOrUpdateVehicles([FromBody] List<Vehicle> vehicles)
         {
             try
@@ -134,7 +160,6 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("vehicles")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<ActionResult<IEnumerable<Vehicle>>> GetAllVehiclesAsync()
         {
             try
@@ -155,7 +180,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("vehicles/{id}")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<ActionResult<Vehicle>> GetVehicleByIdAsync(string id)
         {
             try
@@ -181,7 +205,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="vehicleIDs"></param>
         /// <returns></returns>
         [HttpDelete("vehicles")]
-        [ApiExplorerSettings(GroupName = "Others")]
         public async Task<IActionResult> DeleteVehicles([FromBody] string[] vehicleIDs)
         {
             try
@@ -205,7 +228,6 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns>A list of new or updated evacuation plans</returns>
         [HttpPost("evacuations/plan")]
-        [ApiExplorerSettings(GroupName = "Evacuate")]
         public async Task<IActionResult> GenerateEvacuationPlan()
         {
             try
@@ -225,7 +247,6 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet("evacuations/status")]
-        [ApiExplorerSettings(GroupName = "Evacuate")]
         public async Task<IActionResult> GetEvacuationStatus()
         {
             try
@@ -247,7 +268,6 @@ namespace EvacuationAPI.Controllers
         /// <param name="evacuees"></param>
         /// <returns></returns>
         [HttpPut("evacuations/update")]
-        [ApiExplorerSettings(GroupName = "Evacuate")]
         public async Task<IActionResult> UpdateEvacuationStatus(string zoneID, int evacuees)
         {
             try
@@ -267,7 +287,6 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpDelete("evacuations/clear")]
-        [ApiExplorerSettings(GroupName = "Evacuate")]
         public async Task<IActionResult> ClearEvacuationPlans()
         {
             try
@@ -290,7 +309,7 @@ namespace EvacuationAPI.Controllers
         /// </summary>
         /// <returns>A list of new or updated evacuation plans</returns>
         [HttpPost("evacuations/autoplan")]
-        [ApiExplorerSettings(GroupName = "Others")]
+        //[ApiExplorerSettings(GroupName = "Others")]
         public async Task<IActionResult> AutoGenerateEvacuationPlan()
         {
             try
