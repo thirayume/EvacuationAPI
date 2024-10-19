@@ -34,14 +34,9 @@ namespace EvacuationAPI.Services.Helpers
 
         public static TimeSpan CalculateETA(double speed, double distance)
         {
-            // Time = Distance / Speed; speed should be in the same units as distance (e.g., km/h if distance is in km)
             double timeInHours = distance / speed;
-
-            // Convert hours into TimeSpan for more precise representation (hours and minutes)
             TimeSpan eta = TimeSpan.FromHours(timeInHours);
-
             return eta;
         }
-
     }
 }

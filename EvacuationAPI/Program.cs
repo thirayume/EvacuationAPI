@@ -10,9 +10,6 @@ namespace EvacuationAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add Application Insights telemetry
-            builder.Services.AddApplicationInsightsTelemetry(builder.Configuration["ApplicationInsights:InstrumentationKey"]);
-
             // Add services to the container.
             builder.Services.AddControllers()
                 .AddNewtonsoftJson();
@@ -48,7 +45,6 @@ namespace EvacuationAPI
             // Enable CORS
             app.UseCors("AllowAll");
 
-            // Global error handling middleware
             app.Use(async (context, next) =>
             {
                 try
@@ -68,10 +64,8 @@ namespace EvacuationAPI
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
-                    // Swagger UI settings
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Evacuation API V1");
                     c.RoutePrefix = string.Empty;
-                    //c.RoutePrefix = "swagger"; // Set the route prefix for Swagger UI
                 });
             //}
 
